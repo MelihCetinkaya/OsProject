@@ -4,14 +4,11 @@ public class Toll {
     private final TollSide tollSide;
     private TollStatus tollStatus; // maybe boolean
 
-
     public Toll(int tollId, TollSide tollSide, TollStatus tollStatus) {
         this.tollId = tollId;
         this.tollSide = tollSide;
         this.tollStatus = tollStatus;
     }
-
-
 
     public TollSide getTollSide() {
         return tollSide;

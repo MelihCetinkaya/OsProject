@@ -2,24 +2,20 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
-
 public class Vehicle implements Runnable {
 
     private final int id;
     private int vehicleCapacity;
     private final VehicleType vehicleType;
     private StartingSide startingSide;
-    private int visitingCount = 0;// atomic integer
+    private int visitingCount = 0;
     private Boolean isLoaded = false;
     private Boolean isChanged = false;
 
     public static final Object ferryLock = new Object();
     public static final Object leftTollLock = new Object();
     public static final Object rightTollLock = new Object();
-    public static final Object tollLock = new Object();
     public static final Object moveLock = new Object();
-
-
 
     private static Toll leftToll1 = new Toll(1, Toll.TollSide.leftSide, Toll.TollStatus.free);
     private static Toll leftToll2 = new Toll(2, Toll.TollSide.leftSide, Toll.TollStatus.free);
@@ -33,17 +29,15 @@ public class Vehicle implements Runnable {
     private static ConcurrentHashMap<Integer, Vehicle> waitingRight = new ConcurrentHashMap<>();
     private static ConcurrentHashMap<Integer, Vehicle> waitingLeft = new ConcurrentHashMap<>();
 
-
     private static final int ferryIndex = new Random().nextInt(Vehicle.StartingSide.values().length-1);
     private static final Vehicle.StartingSide randomFerrySide = Vehicle.StartingSide.values()[ferryIndex];
-    private static Vehicle ferry = new Vehicle(100,randomFerrySide, Vehicle.VehicleType.ferry);
+    private static volatile Vehicle ferry = new Vehicle(100,randomFerrySide, Vehicle.VehicleType.ferry);
 
     public Vehicle(int id, StartingSide startingSide, VehicleType vehicleType) {
         this.id = id;
         this.startingSide = startingSide;
         this.vehicleType = vehicleType;
         switch (vehicleType) {
-
             case car:
                 this.vehicleCapacity = 1;
                 break;
@@ -71,25 +65,21 @@ public class Vehicle implements Runnable {
         this.startingSide = startingSide;
     }
 
-
     @Override
     public void run() {
 
         if(startingSide == StartingSide.leftSide) {
-
             leftVehicle.put(id,Main.vehicleList.get(id));
         }
         else {
-
             rightVehicle.put(id,Main.vehicleList.get(id));
         }
 
         while (visitingCount < 2) {
-
             isChanged = false;
 
             if (checkTolls()) {
-               // System.out.println( id +" passed through " + startingSide + " toll waiting for ferry");
+                System.out.println( id +" passed through " + startingSide + " toll waiting for ferry");
 
                 while (isChanged == false) {
 
@@ -100,26 +90,21 @@ public class Vehicle implements Runnable {
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
-
                 }
-
             }
             else{
-                try {
-                    System.out.println( startingSide + "tolls are busy for " + id);
-                    Thread.sleep(200);
-                } catch (InterruptedException ignored) {
 
-                }
+                    System.out.println( startingSide + "tolls are busy for " + id);
+                   // Thread.sleep(20);
+
             }
 
         }
     }
 
-
     public Boolean checkTolls() {
 
-        synchronized (tollLock) {
+        synchronized (leftTollLock) {
             if (this.startingSide == Vehicle.StartingSide.leftSide && leftToll1.getTollStatus() == Toll.TollStatus.free
                     || leftToll2.getTollStatus() == Toll.TollStatus.free) {
 
@@ -134,7 +119,7 @@ public class Vehicle implements Runnable {
                 } else {
                     leftToll1.setTollStatus(Toll.TollStatus.full);
 
-                   /* try {
+                 /*  try {
                         Thread.sleep(100);
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
@@ -145,33 +130,35 @@ public class Vehicle implements Runnable {
 
                 return true;
 
-            } else if (startingSide == Vehicle.StartingSide.rightSide && rightToll1.getTollStatus() == Toll.TollStatus.free
-                    || rightToll2.getTollStatus() == Toll.TollStatus.free) {
+            } }
 
-                if (rightToll1.getTollStatus() == Toll.TollStatus.full) {
-                    rightToll2.setTollStatus(Toll.TollStatus.full);
-                 /*  try {
+    synchronized (rightTollLock) {
+        if (startingSide == Vehicle.StartingSide.rightSide && rightToll1.getTollStatus() == Toll.TollStatus.free
+                || rightToll2.getTollStatus() == Toll.TollStatus.free) {
+
+            if (rightToll1.getTollStatus() == Toll.TollStatus.full) {
+                rightToll2.setTollStatus(Toll.TollStatus.full);
+                    /*try {
                         Thread.sleep(100);
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }*/
-                    rightToll2.setTollStatus(Toll.TollStatus.free);
-                } else {
-                    rightToll1.setTollStatus(Toll.TollStatus.full);
-                /*    try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }*/
-                    rightToll1.setTollStatus(Toll.TollStatus.free);
-                }
-                return true;
-
+                rightToll2.setTollStatus(Toll.TollStatus.free);
             } else {
-
-                return false;
+                rightToll1.setTollStatus(Toll.TollStatus.full);
+                    /*try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }*/
+                rightToll1.setTollStatus(Toll.TollStatus.free);
             }
+            return true;
+        } else {
+
+            return false;
         }
+    }
     }
 
     public Boolean loadToFerry() throws InterruptedException {
@@ -181,7 +168,6 @@ public class Vehicle implements Runnable {
               //  System.out.println(id + " already loaded to ferry");
                 moveFerry();
                 return true;
-             //  Thread.sleep(100);
 
             } else if (ferry.startingSide == this.startingSide && ferry.vehicleCapacity + vehicleCapacity <= 20
             && visitingCount < 2 ) {
@@ -201,12 +187,10 @@ public class Vehicle implements Runnable {
 
                 moveFerry();
                 return true;
-
             }
 
             else if (ferry.startingSide == this.startingSide && ferry.vehicleCapacity + vehicleCapacity > 20
                     && visitingCount < 2 ) {
-
                // System.out.println("ferry capacity not enough for " + id);
 
                 if (startingSide == StartingSide.leftSide) {
@@ -221,16 +205,14 @@ public class Vehicle implements Runnable {
                 }
 
                 return true;
-
             }
 
              else if (visitingCount < 2) {
-
-                // System.out.println("ferry is on the other side for " + id);
+                 //System.out.println("ferry is on the other side for " + id);
                 moveFerry();
                 return true;
             } else {
-              //  System.out.println("vehicle " + id + " already finished tours");
+               // System.out.println("vehicle " + id + " already finished tours");
 
             return false;
             }
@@ -262,7 +244,6 @@ public void moveFerry() throws InterruptedException {
                     } else {
                         rightVehicle.put(v.id, v);
                     }
-
             }
 
             vehicleMap.clear();
@@ -271,7 +252,6 @@ public void moveFerry() throws InterruptedException {
 
             leftVehicle.putAll(waitingLeft);
             waitingLeft.clear();
-
         }
         else {
 
@@ -304,13 +284,12 @@ public void moveFerry() throws InterruptedException {
         }
 
         System.out.println("The ferry changed to the " + ferry.startingSide);
-        Thread.sleep(50);
+        Thread.sleep(5);
     }
 else {
-        //System.out.println("ferry not moving for " + id);
-        // Thread.sleep(100);
+        // System.out.println("ferry not moving for " + id);
+         Thread.sleep(10);
         }
 }
-
 }
 }
