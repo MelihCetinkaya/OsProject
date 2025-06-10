@@ -92,12 +92,6 @@ public class Vehicle implements Runnable {
                     }
                 }
             }
-            else{
-
-                    System.out.println( startingSide + "tolls are busy for " + id);
-                   // Thread.sleep(20);
-
-            }
 
         }
     }
@@ -129,7 +123,6 @@ public class Vehicle implements Runnable {
                 }
 
                 return true;
-
             } }
 
     synchronized (rightTollLock) {
@@ -183,7 +176,7 @@ public class Vehicle implements Runnable {
 
                 vehicleMap.put(id, Main.vehicleList.get(id));
                 isLoaded = true;
-                System.out.println("vehicle " + id + " loaded to ferry " + ferry.vehicleCapacity);
+                System.out.println("vehicle " + id + " " + vehicleType + " loaded to ferry , now ferry capacity " + ferry.vehicleCapacity);
 
                 moveFerry();
                 return true;
@@ -237,10 +230,10 @@ public void moveFerry() throws InterruptedException {
                     v.isChanged = true;
                     v.visitingCount++;
                     v.isLoaded = false;
-                    System.out.println(v.id + " passed " + v.visitingCount + " times from ferry");
+                    System.out.println(v.id + " used " + v.visitingCount + " times ferry type :  "+ v.vehicleType);
 
                     if (v.visitingCount == 2) {
-                        System.out.println(v.id + "finished visiting");
+                        System.out.println(v.id +  " finished visiting type : " + v.vehicleType);
                     } else {
                         rightVehicle.put(v.id, v);
                     }
@@ -264,14 +257,13 @@ public void moveFerry() throws InterruptedException {
                 v.isChanged = true;
                 v.visitingCount++;
                 v.isLoaded = false;
-                System.out.println(v.id +" used " +v.visitingCount +" times from ferry" );
+                System.out.println(v.id +" used " +v.visitingCount +" times ferry type : "+ v.vehicleType );
 
                 if(v.visitingCount == 2){
-                    System.out.println( v.id +" finished visiting");
+                    System.out.println( v.id +" finished visiting, type : " + v.vehicleType);
                 }
                 else{
                  leftVehicle.put(v.id,v);}
-
             }
 
             vehicleMap.clear();
@@ -280,7 +272,6 @@ public void moveFerry() throws InterruptedException {
 
             rightVehicle.putAll(waitingRight);
             waitingRight.clear();
-
         }
 
         System.out.println("The ferry changed to the " + ferry.startingSide);
