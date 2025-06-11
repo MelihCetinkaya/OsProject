@@ -8,6 +8,7 @@ public class Vehicle implements Runnable {
     private int vehicleCapacity;
     private final VehicleType vehicleType;
     private StartingSide startingSide;
+    private Square square = Square.idle;
     private int visitingCount = 0;
     private Boolean isLoaded = false;
     private Boolean isChanged = false;
@@ -57,6 +58,10 @@ public class Vehicle implements Runnable {
         car,minibus,truck,ferry
     }
 
+    public enum Square{
+        rightSquare,leftSquare,idle
+    }
+
     public enum StartingSide{
         leftSide, rightSide,idle
     }
@@ -79,7 +84,7 @@ public class Vehicle implements Runnable {
             isChanged = false;
 
             if (checkTolls()) {
-                System.out.println( id +" passed through " + startingSide + " toll waiting for ferry");
+                System.out.println( id + " " + vehicleType + " passed through " + startingSide + " toll waiting for ferry");
 
                 while (isChanged == false) {
 
@@ -110,6 +115,7 @@ public class Vehicle implements Runnable {
                         throw new RuntimeException(e);
                     }*/
                     leftToll2.setTollStatus(Toll.TollStatus.free);
+                    square = Square.leftSquare;
                 } else {
                     leftToll1.setTollStatus(Toll.TollStatus.full);
 
@@ -120,50 +126,53 @@ public class Vehicle implements Runnable {
                     }*/
 
                     leftToll1.setTollStatus(Toll.TollStatus.free);
+                    square = Square.leftSquare;
                 }
 
                 return true;
             } }
 
-    synchronized (rightTollLock) {
-        if (startingSide == Vehicle.StartingSide.rightSide && rightToll1.getTollStatus() == Toll.TollStatus.free
-                || rightToll2.getTollStatus() == Toll.TollStatus.free) {
+        synchronized (rightTollLock) {
+            if (startingSide == Vehicle.StartingSide.rightSide && rightToll1.getTollStatus() == Toll.TollStatus.free
+                    || rightToll2.getTollStatus() == Toll.TollStatus.free) {
 
-            if (rightToll1.getTollStatus() == Toll.TollStatus.full) {
-                rightToll2.setTollStatus(Toll.TollStatus.full);
+                if (rightToll1.getTollStatus() == Toll.TollStatus.full) {
+                    rightToll2.setTollStatus(Toll.TollStatus.full);
                     /*try {
                         Thread.sleep(100);
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }*/
-                rightToll2.setTollStatus(Toll.TollStatus.free);
+                    rightToll2.setTollStatus(Toll.TollStatus.free);
+                    square = Square.rightSquare;
+                } else {
+                    rightToll1.setTollStatus(Toll.TollStatus.full);
+                    /*try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }*/
+                    rightToll1.setTollStatus(Toll.TollStatus.free);
+                    square = Square.rightSquare;
+                }
+                return true;
             } else {
-                rightToll1.setTollStatus(Toll.TollStatus.full);
-                    /*try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }*/
-                rightToll1.setTollStatus(Toll.TollStatus.free);
-            }
-            return true;
-        } else {
 
-            return false;
+                return false;
+            }
         }
-    }
     }
 
     public Boolean loadToFerry() throws InterruptedException {
 
         synchronized (ferryLock) {
             if (isLoaded == true) {
-              //  System.out.println(id + " already loaded to ferry");
+                //  System.out.println(id + " already loaded to ferry");
                 moveFerry();
                 return true;
 
             } else if (ferry.startingSide == this.startingSide && ferry.vehicleCapacity + vehicleCapacity <= 20
-            && visitingCount < 2 ) {
+                    && visitingCount < 2 ) {
 
                 ferry.vehicleCapacity += vehicleCapacity;
                 if (startingSide == StartingSide.leftSide) {
@@ -176,6 +185,7 @@ public class Vehicle implements Runnable {
 
                 vehicleMap.put(id, Main.vehicleList.get(id));
                 isLoaded = true;
+                square = Square.idle;
                 System.out.println("vehicle " + id + " " + vehicleType + " loaded to ferry , now ferry capacity " + ferry.vehicleCapacity);
 
                 moveFerry();
@@ -184,7 +194,7 @@ public class Vehicle implements Runnable {
 
             else if (ferry.startingSide == this.startingSide && ferry.vehicleCapacity + vehicleCapacity > 20
                     && visitingCount < 2 ) {
-               // System.out.println("ferry capacity not enough for " + id);
+                // System.out.println("ferry capacity not enough for " + id);
 
                 if (startingSide == StartingSide.leftSide) {
 
@@ -200,31 +210,31 @@ public class Vehicle implements Runnable {
                 return true;
             }
 
-             else if (visitingCount < 2) {
-                 //System.out.println("ferry is on the other side for " + id);
+            else if (visitingCount < 2) {
+                //System.out.println("ferry is on the other side for " + id);
                 moveFerry();
                 return true;
             } else {
-               // System.out.println("vehicle " + id + " already finished tours");
+                // System.out.println("vehicle " + id + " already finished tours");
 
-            return false;
+                return false;
             }
         }
     }
 
-public void moveFerry() throws InterruptedException {
+    public void moveFerry() throws InterruptedException {
 
-    synchronized (moveLock) {  if(ferry.vehicleCapacity == 20 || (ferry.startingSide == StartingSide.rightSide && rightVehicle.isEmpty() ) ||
-    ferry.startingSide == StartingSide.leftSide && leftVehicle.isEmpty() ) {
+        synchronized (moveLock) {  if(ferry.vehicleCapacity == 20 || (ferry.startingSide == StartingSide.rightSide && rightVehicle.isEmpty() ) ||
+                ferry.startingSide == StartingSide.leftSide && leftVehicle.isEmpty() ) {
 
-        if(ferry.startingSide == StartingSide.leftSide){
+            if(ferry.startingSide == StartingSide.leftSide){
 
-            ferry.startingSide = StartingSide.idle;
-            ferry.vehicleCapacity = 0;
+                ferry.startingSide = StartingSide.idle;
+                ferry.vehicleCapacity = 0;
 
-            for (Map.Entry<Integer, Vehicle> entry : vehicleMap.entrySet()) {
+                for (Map.Entry<Integer, Vehicle> entry : vehicleMap.entrySet()) {
 
-                Vehicle v = entry.getValue();
+                    Vehicle v = entry.getValue();
 
                     v.setStartingSide(Vehicle.StartingSide.rightSide);
                     v.isChanged = true;
@@ -237,50 +247,50 @@ public void moveFerry() throws InterruptedException {
                     } else {
                         rightVehicle.put(v.id, v);
                     }
+                }
+
+                vehicleMap.clear();
+                System.out.println("Waiting for vehicles to get off the ferry (2 seconds)");
+                Thread.sleep(2000);
+                ferry.startingSide = StartingSide.rightSide;
+
+                leftVehicle.putAll(waitingLeft);
+                waitingLeft.clear();
+            }
+            else {
+
+                ferry.startingSide = StartingSide.idle;
+                ferry.vehicleCapacity = 0;
+
+                for (Map.Entry<Integer, Vehicle> entry : vehicleMap.entrySet()) {
+                    Vehicle v = entry.getValue();
+                    v.setStartingSide(Vehicle.StartingSide.leftSide);
+                    v.isChanged = true;
+                    v.visitingCount++;
+                    v.isLoaded = false;
+                    System.out.println(v.id +" used " +v.visitingCount +" times ferry type : "+ v.vehicleType );
+
+                    if(v.visitingCount == 2){
+                        System.out.println( v.id +" finished visiting, type : " + v.vehicleType);
+                    }
+                    else{
+                        leftVehicle.put(v.id,v);}
+                }
+
+                vehicleMap.clear();
+                System.out.println("Waiting for vehicles to get off the ferry (2 seconds)");
+                Thread.sleep(2000);
+                ferry.startingSide = StartingSide.leftSide;
+
+                rightVehicle.putAll(waitingRight);
+                waitingRight.clear();
             }
 
-            vehicleMap.clear();
-            Thread.sleep(50);
-            ferry.startingSide = StartingSide.rightSide;
-
-            leftVehicle.putAll(waitingLeft);
-            waitingLeft.clear();
+            System.out.println("The ferry changed to the " + ferry.startingSide);
         }
         else {
-
-            ferry.startingSide = StartingSide.idle;
-            ferry.vehicleCapacity = 0;
-
-            for (Map.Entry<Integer, Vehicle> entry : vehicleMap.entrySet()) {
-                Vehicle v = entry.getValue();
-                v.setStartingSide(Vehicle.StartingSide.leftSide);
-                v.isChanged = true;
-                v.visitingCount++;
-                v.isLoaded = false;
-                System.out.println(v.id +" used " +v.visitingCount +" times ferry type : "+ v.vehicleType );
-
-                if(v.visitingCount == 2){
-                    System.out.println( v.id +" finished visiting, type : " + v.vehicleType);
-                }
-                else{
-                 leftVehicle.put(v.id,v);}
-            }
-
-            vehicleMap.clear();
-            Thread.sleep(50);
-            ferry.startingSide = StartingSide.leftSide;
-
-            rightVehicle.putAll(waitingRight);
-            waitingRight.clear();
+            // System.out.println("ferry not moving for " + id);
         }
-
-        System.out.println("The ferry changed to the " + ferry.startingSide);
-        Thread.sleep(5);
+        }
     }
-else {
-        // System.out.println("ferry not moving for " + id);
-         Thread.sleep(10);
-        }
-}
-}
 }
