@@ -14,8 +14,10 @@ public class Vehicle implements Runnable {
     private Boolean isChanged = false;
 
     public static final Object ferryLock = new Object();
-    public static final Object leftTollLock = new Object();
-    public static final Object rightTollLock = new Object();
+    public static final Object leftTollLock1 = new Object();
+    public static final Object rightTollLock1 = new Object();
+    public static final Object leftTollLock2 = new Object();
+    public static final Object rightTollLock2 = new Object();
     public static final Object moveLock = new Object();
 
     private static Toll leftToll1 = new Toll(1, Toll.TollSide.leftSide, Toll.TollStatus.free);
@@ -97,55 +99,44 @@ public class Vehicle implements Runnable {
                     }
                 }
             }
-
         }
     }
 
     public Boolean checkTolls() {
 
-        synchronized (leftTollLock) {
             if (this.startingSide == Vehicle.StartingSide.leftSide && leftToll1.getTollStatus() == Toll.TollStatus.free
                     || leftToll2.getTollStatus() == Toll.TollStatus.free) {
 
-                if (leftToll1.getTollStatus() == Toll.TollStatus.full) {
-                    leftToll2.setTollStatus(Toll.TollStatus.full);
+                synchronized (leftTollLock1) {
+                    if (leftToll1.getTollStatus() == Toll.TollStatus.free) {
+                        leftToll1.setTollStatus(Toll.TollStatus.free);
                   /* try {
                         Thread.sleep(100);
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }*/
-                    leftToll2.setTollStatus(Toll.TollStatus.free);
-                    square = Square.leftSquare;
-                } else {
-                    leftToll1.setTollStatus(Toll.TollStatus.full);
-
+                        leftToll1.setTollStatus(Toll.TollStatus.free);
+                        square = Square.leftSquare;
+                    }}synchronized (leftTollLock2) {
+                    if (leftToll2.getTollStatus() == Toll.TollStatus.free) {
+                        leftToll2.setTollStatus(Toll.TollStatus.full);
                  /*  try {
                         Thread.sleep(100);
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }*/
-
-                    leftToll1.setTollStatus(Toll.TollStatus.free);
-                    square = Square.leftSquare;
+                        leftToll2.setTollStatus(Toll.TollStatus.free);
+                        square = Square.leftSquare;
+                    }
                 }
+                    return true;
 
-                return true;
-            } }
+            }
 
-        synchronized (rightTollLock) {
-            if (startingSide == Vehicle.StartingSide.rightSide && rightToll1.getTollStatus() == Toll.TollStatus.free
+          else  if (startingSide == Vehicle.StartingSide.rightSide && rightToll1.getTollStatus() == Toll.TollStatus.free
                     || rightToll2.getTollStatus() == Toll.TollStatus.free) {
 
-                if (rightToll1.getTollStatus() == Toll.TollStatus.full) {
-                    rightToll2.setTollStatus(Toll.TollStatus.full);
-                    /*try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }*/
-                    rightToll2.setTollStatus(Toll.TollStatus.free);
-                    square = Square.rightSquare;
-                } else {
+              synchronized (rightTollLock1){ if (rightToll1.getTollStatus() == Toll.TollStatus.free) {
                     rightToll1.setTollStatus(Toll.TollStatus.full);
                     /*try {
                         Thread.sleep(100);
@@ -154,14 +145,23 @@ public class Vehicle implements Runnable {
                     }*/
                     rightToll1.setTollStatus(Toll.TollStatus.free);
                     square = Square.rightSquare;
+                } }
+               synchronized (rightTollLock2){ if(rightToll2.getTollStatus() == Toll.TollStatus.free) {
+                    rightToll2.setTollStatus(Toll.TollStatus.full);
+                    /*try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }*/
+                    rightToll2.setTollStatus(Toll.TollStatus.free);
+                    square = Square.rightSquare;
                 }
+            }
                 return true;
-            } else {
-
+          }else {
                 return false;
             }
         }
-    }
 
     public Boolean loadToFerry() throws InterruptedException {
 
@@ -231,14 +231,13 @@ public class Vehicle implements Runnable {
 
                 ferry.startingSide = StartingSide.idle;
                 ferry.vehicleCapacity = 0;
-
+                System.out.println("the ferry has reached the right side.Waiting for vehicles to get off the ferry (2 seconds)");
+                Thread.sleep(2000);
                 for (Map.Entry<Integer, Vehicle> entry : vehicleMap.entrySet()) {
-
                     Vehicle v = entry.getValue();
-
-                    v.setStartingSide(Vehicle.StartingSide.rightSide);
-                    v.isChanged = true;
                     v.visitingCount++;
+                    v.isChanged = true;
+                    v.setStartingSide(Vehicle.StartingSide.rightSide);
                     v.isLoaded = false;
                     System.out.println(v.id + " used " + v.visitingCount + " times ferry type :  "+ v.vehicleType);
 
@@ -250,8 +249,6 @@ public class Vehicle implements Runnable {
                 }
 
                 vehicleMap.clear();
-                System.out.println("Waiting for vehicles to get off the ferry (2 seconds)");
-                Thread.sleep(2000);
                 ferry.startingSide = StartingSide.rightSide;
 
                 leftVehicle.putAll(waitingLeft);
@@ -261,12 +258,14 @@ public class Vehicle implements Runnable {
 
                 ferry.startingSide = StartingSide.idle;
                 ferry.vehicleCapacity = 0;
+                System.out.println("the ferry has reached the left side.Waiting for vehicles to get off the ferry (2 seconds)");
+                Thread.sleep(2000);
 
                 for (Map.Entry<Integer, Vehicle> entry : vehicleMap.entrySet()) {
                     Vehicle v = entry.getValue();
-                    v.setStartingSide(Vehicle.StartingSide.leftSide);
-                    v.isChanged = true;
                     v.visitingCount++;
+                    v.isChanged = true;
+                    v.setStartingSide(Vehicle.StartingSide.leftSide);
                     v.isLoaded = false;
                     System.out.println(v.id +" used " +v.visitingCount +" times ferry type : "+ v.vehicleType );
 
@@ -278,15 +277,14 @@ public class Vehicle implements Runnable {
                 }
 
                 vehicleMap.clear();
-                System.out.println("Waiting for vehicles to get off the ferry (2 seconds)");
-                Thread.sleep(2000);
                 ferry.startingSide = StartingSide.leftSide;
 
                 rightVehicle.putAll(waitingRight);
                 waitingRight.clear();
             }
 
-            System.out.println("The ferry changed to the " + ferry.startingSide);
+            System.out.println("All vehicles got off the ferry.");
+
         }
         else {
             // System.out.println("ferry not moving for " + id);

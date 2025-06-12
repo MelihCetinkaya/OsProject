@@ -2,7 +2,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
-
 public class Main {
 
     public static Map<Integer, Vehicle> vehicleList = new ConcurrentHashMap<>();
@@ -36,7 +35,6 @@ public class Main {
                 Thread t1 = new Thread(vehicle);
 
                 t1.start();
-
             }
         }
     }
