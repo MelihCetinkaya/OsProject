@@ -10,10 +10,6 @@ public class Toll {
         this.tollStatus = tollStatus;
     }
 
-    public TollSide getTollSide() {
-        return tollSide;
-    }
-
     public TollStatus getTollStatus() {
         return tollStatus;
     }
@@ -22,13 +18,11 @@ public class Toll {
         this.tollStatus = tollStatus;
     }
 
-
-    public enum TollSide{
-        leftSide,rightSide
+    public enum TollSide {
+        leftSide, rightSide
     }
 
-    public enum TollStatus{
-        free,full
+    public enum TollStatus {
+        free, full
     }
-
 }
